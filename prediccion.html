@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Predicción de Fraude</title>
+    <script src="./logistic.js"></script>
+</head>
+
+<body>
+    <h2>Predicción con Modelo de Regresión Logística</h2>
+    <form id="predictionForm">
+
+        <label for="type">Tipo de Transacción:</label><br>
+        <select id="type" required>
+            <option value="">Seleccione una opción</option>
+            <option value="CASH-IN">CASH-IN</option>
+            <option value="CASH-OUT">CASH-OUT</option>
+            <option value="DEBIT">DEBIT</option>
+            <option value="PAYMENT">PAYMENT</option>
+            <option value="TRANSFER">TRANSFER</option>
+        </select>
+        <br><br>
+
+        <label for="amount">Monto (Amount):</label><br>
+        <input type="number" id="amount" step="0.01" required><br><br>
+
+        <label for="oldbalanceOrg">Saldo antes (Old Balance Origin):</label><br>
+        <input type="number" id="oldbalanceOrg" step="0.01" required><br><br>
+
+        <label for="newbalanceOrig">Nuevo saldo (New Balance Origin):</label><br>
+        <input type="number" id="newbalanceOrig" step="0.01" required><br><br>
+
+        <label for="oldbalanceDest">Saldo Destino antes (Old Balance Dest):</label><br>
+        <input type="number" id="oldbalanceDest" step="0.01" required><br><br>
+
+        <label for="newbalanceDest">Nuevo Saldo Destino (New Balance Dest):</label><br>
+        <input type="number" id="newbalanceDest" step="0.01" required><br><br>
+
+        <label for="isFlaggedFraud">¿Marcado como Fraude?:</label><br>
+        <select id="isFlaggedFraud" required>
+            <option value="">Seleccione una opción</option>
+            <option value="SI">SI</option>
+            <option value="NO">NO</option>
+        </select>
+        <br><br>
+
+        <button type="button" onclick="prediccion()">Hacer Predicción</button>
+    </form>
+
+    <h3>Resultado:</h3>
+    <pre id="result"></pre>
+
+    <script>
+        // Función de predicción usando el modelo de regresión logística
+        function predict(input, model) {
+            const intercept = model.intercept_[0];
+            const coef = model.coef_[0].map(value => parseFloat(value));
+            console.log(coef)
+
+            let linearSum = intercept;
+
+            // Convertir todos los elementos de input a números y validar
+            for (let i = 0; i < input.length; i++) {
+                const value = parseFloat(input[i]);
+
+                // Realizar el cálculo
+                linearSum += value * coef[i];
+            }
+
+            console.log("Suma lineal después de la conversión:", linearSum);
+
+            // Aplicar la función sigmoide para calcular la probabilidad
+            const probability = 1 / (1 + Math.exp(-linearSum));
+            const prediction = probability >= 0.5 ? 1 : 0;
+
+            return { probability, prediction };
+        }
+
+        async function prediccion() {
+            // Obtener valores de los campos
+            const typeText = document.getElementById("type").value;
+            const isFlaggedFraudText = document.getElementById("isFlaggedFraud").value;
+
+            const amount = parseFloat(document.getElementById('amount').value);
+            const oldbalanceOrg = parseFloat(document.getElementById('oldbalanceOrg').value);
+            const newbalanceOrig = parseFloat(document.getElementById('newbalanceOrig').value);
+            const oldbalanceDest = parseFloat(document.getElementById('oldbalanceDest').value);
+            const newbalanceDest = parseFloat(document.getElementById('newbalanceDest').value);
+
+            // Variables para los mensajes de error
+            let errorMessage = "";
+
+            // Validar el campo "Tipo de Transacción"
+            if (!typeText) {
+                errorMessage += "⚠️ Seleccione un tipo de transacción.\n";
+            }
+
+            // Validar el campo "Monto (Amount)"
+            if (isNaN(amount) || amount <= 0) {
+                errorMessage += "⚠️ Ingrese un monto válido mayor a 0.\n";
+            }
+
+            // Validar el campo "Saldo antes (Old Balance Origin)"
+            if (isNaN(oldbalanceOrg) || oldbalanceOrg < 0) {
+                errorMessage += "⚠️ Ingrese un saldo antes (Origen) válido.\n";
+            }
+
+            // Validar el campo "Nuevo saldo (New Balance Origin)"
+            if (isNaN(newbalanceOrig) || newbalanceOrig < 0) {
+                errorMessage += "⚠️ Ingrese un nuevo saldo (Origen) válido.\n";
+            }
+
+            // Validar el campo "Saldo Destino antes (Old Balance Dest)"
+            if (isNaN(oldbalanceDest) || oldbalanceDest < 0) {
+                errorMessage += "⚠️ Ingrese un saldo destino antes válido.\n";
+            }
+
+            // Validar el campo "Nuevo Saldo Destino (New Balance Dest)"
+            if (isNaN(newbalanceDest) || newbalanceDest < 0) {
+                errorMessage += "⚠️ Ingrese un nuevo saldo destino válido.\n";
+            }
+
+            // Validar el campo "¿Marcado como Fraude?"
+            if (!isFlaggedFraudText) {
+                errorMessage += "⚠️ Seleccione si la transacción está marcada como fraude.\n";
+            }
+
+            // Mostrar mensaje de error si hay algún problema
+            if (errorMessage) {
+                document.getElementById('result').innerText = errorMessage;
+                return;
+            }
+
+            // Convertir valores de texto a numéricos
+            const typeMapping = {
+                "CASH-IN": 0,
+                "CASH-OUT": 1,
+                "DEBIT": 2,
+                "PAYMENT": 3,
+                "TRANSFER": 4
+            };
+            const isFlaggedFraud = isFlaggedFraudText === "SI" ? 1 : 0;
+            const type = typeMapping[typeText] ?? -1;
+
+            // Preparar el array de entrada para la predicción
+            const input = [
+                type, amount, oldbalanceOrg, newbalanceOrig,
+                oldbalanceDest, newbalanceDest, isFlaggedFraud
+            ];
+
+            // Realizar la predicción
+            try {
+                const model = logistic; // Asegúrate de que el archivo logistic.js está cargado correctamente
+                const result = predict(input, model);
+
+                document.getElementById('result').innerText =
+                    `Probabilidad de Fraude: ${result.probability.toFixed(4)}\n` +
+                    `Predicción: ${result.prediction ? 'Fraude' : 'No Fraude'}`;
+            } catch (error) {
+                document.getElementById('result').innerText =
+                    "Ocurrió un error al hacer la predicción: " + error.message;
+            }
+        }
+    </script>
+
+
+</body>
+
+</html>
